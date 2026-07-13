@@ -32,8 +32,8 @@ function stemMatch(targetText, queryText) {
 
 class DocsLogo extends HTMLElement {
     connectedCallback() {
-        this.innerHTML = `
-            <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" style="color: var(--accent); vertical-align: middle;">
+        this.innerHTML = /*html*/ `
+            <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
                 <path d="M2 3h6a4 4 0 0 1 4 4v14a3 3 0 0 0-3-3H2z"></path>
                 <path d="M22 3h-6a4 4 0 0 0-4 4v14a3 3 0 0 1 3-3h7z"></path>
             </svg>
@@ -42,11 +42,86 @@ class DocsLogo extends HTMLElement {
 }
 customElements.define('docs-logo', DocsLogo);
 
+class DocsHeaderNav extends HTMLElement {
+    static get observedAttributes() {
+        return ['items', 'active-tab', 'app-url', 'docs-url'];
+    }
+
+    constructor() {
+        super();
+    }
+
+    connectedCallback() {
+        this.render();
+    }
+
+    attributeChangedCallback() {
+        this.render();
+    }
+
+    isSubpage() {
+        const path = window.location.pathname;
+        return /\/docs\/[^\/]+\//.test(path) || (!path.endsWith('/docs/') && path.split('/docs/')[1]?.length > 0 && path.split('/docs/')[1].includes('/'));
+    }
+
+    render() {
+        const basePath = this.isSubpage() ? '../' : '';
+        const appUrl = this.getAttribute('app-url') || `${basePath}../`;
+        const docsUrl = this.getAttribute('docs-url') || `${basePath}./`;
+        const activeTab = this.getAttribute('active-tab');
+
+        let navItems = [];
+        const itemsAttr = this.getAttribute('items');
+        if (itemsAttr) {
+            try {
+                navItems = JSON.parse(itemsAttr);
+            } catch (e) {
+                console.error('Failed to parse items attribute on docs-header-nav:', e);
+            }
+        }
+
+        if (!navItems || navItems.length === 0) {
+            navItems = [
+                { title: 'App', href: appUrl, id: 'app' },
+                { title: 'Guides', href: docsUrl, id: 'guides' }
+            ];
+        }
+
+        const currentPath = window.location.pathname;
+
+        this.innerHTML = navItems.map(item => {
+            let href = item.href;
+            if (this.isSubpage() && (href.startsWith('./') || href.startsWith('../'))) {
+                href = basePath + href;
+            }
+
+            let isActive = false;
+            if (activeTab) {
+                isActive = item.id === activeTab || item.title?.toLowerCase() === activeTab.toLowerCase();
+            } else {
+                const linkPath = new URL(href, window.location.origin).pathname;
+                if (item.id === 'guides' && (currentPath.endsWith('/docs/') || currentPath.includes('/docs/'))) {
+                    isActive = true;
+                } else if (item.id === 'app' && !currentPath.includes('/docs/')) {
+                    isActive = true;
+                } else if (linkPath !== '/' && currentPath.includes(linkPath)) {
+                    isActive = true;
+                }
+            }
+
+            const activeClass = isActive ? 'active' : '';
+            return `<a href="${href}" class="nav-link ${activeClass}" ${item.id ? `id="nav-link-${item.id}"` : ''}>${item.title}</a>`;
+        }).join('');
+    }
+}
+customElements.define('docs-header-nav', DocsHeaderNav);
+
 class DocsHeader extends HTMLElement {
     constructor() {
         super();
         this.index = null;
         this.isLoading = false;
+        this.config = {};
     }
 
     isSubpage() {
@@ -64,29 +139,36 @@ class DocsHeader extends HTMLElement {
         fetch(`${basePath}docs-config.json`)
             .then(r => r.ok ? r.json() : null)
             .then(config => {
-                const projectName = config ? config.projectName : 'Help Center';
+                this.config = config || {};
+                const projectName = this.config.projectName || 'Help Center';
                 this.render(projectName, appUrl, docsUrl, showLogo);
             })
             .catch(() => {
+                this.config = {};
                 this.render('Help Center', appUrl, docsUrl, showLogo);
             });
     }
 
     render(projectName, appUrl, docsUrl, showLogo) {
-        this.innerHTML = `
+        const navItems = this.getAttribute('nav-items') || (this.config && this.config.navLinks ? JSON.stringify(this.config.navLinks) : '');
+        const activeTab = this.getAttribute('active-tab') || '';
+
+        this.innerHTML = /*html*/`
             <div class="header-search-backdrop"></div>
             <header class="app-header">
                 ${showLogo ? `
-                <a href="/" class="header-logo" style="text-decoration: none; display: flex; align-items: center; gap: 0.5rem;">
+                <a href="/" class="header-logo">
                     <docs-logo></docs-logo>
-                    <h1 style="margin: 0; font-size: 1.25rem; font-weight: 700;">${projectName}</h1>
+                    <h1>${projectName}</h1>
                 </a>
                 ` : ''}
                 <div class="header-actions">
-                    <div class="header-nav" aria-label="Main Navigation">
-                        <a href="${appUrl}" class="nav-link">App</a>
-                        <a href="${docsUrl}" class="nav-link active">Guides</a>
-                    </div>
+                    <docs-header-nav class="header-nav" aria-label="Main Navigation"
+                        ${navItems ? `items='${navItems.replace(/'/g, "&apos;")}'` : ''}
+                        ${activeTab ? `active-tab="${activeTab}"` : ''}
+                        app-url="${appUrl}"
+                        docs-url="${docsUrl}">
+                    </docs-header-nav>
                     
                     <div class="header-search-container">
                         <input type="search" class="header-search-input" placeholder="Search guides..." aria-label="Search guides" autocomplete="off" />
@@ -96,7 +178,7 @@ class DocsHeader extends HTMLElement {
                                 <line x1="21" y1="21" x2="16.65" y2="16.65"></line>
                             </svg>
                         </button>
-                        <div class="header-search-dropdown" style="display: none;"></div>
+                        <div class="header-search-dropdown"></div>
                     </div>
 
                     <button id="mobile-nav-toggle" class="mobile-nav-toggle" aria-label="Toggle navigation menu" aria-expanded="false">
@@ -105,7 +187,7 @@ class DocsHeader extends HTMLElement {
                             <line x1="3" y1="6" x2="21" y2="6"></line>
                             <line x1="3" y1="18" x2="21" y2="18"></line>
                         </svg>
-                        <svg class="close-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="display: none;">
+                        <svg class="close-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
                             <line x1="18" y1="6" x2="6" y2="18"></line>
                             <line x1="6" y1="6" x2="18" y2="18"></line>
                         </svg>
@@ -124,18 +206,31 @@ class DocsHeader extends HTMLElement {
         const overlay = document.querySelector('#mobile-overlay');
         const menuIcon = this.querySelector('.menu-icon');
         const closeIcon = this.querySelector('.close-icon');
+        const headerNav = this.querySelector('.header-nav');
 
-        if (!toggleBtn || !sidebar || !overlay) return;
+        if (!toggleBtn || !overlay) return;
 
         const toggleMenu = () => {
-            const isOpen = sidebar.classList.toggle('open');
-            overlay.classList.toggle('open', isOpen);
+            let isOpen = false;
+
+            if (this.isSubpage() && sidebar) {
+                const pageSidebar = sidebar.querySelector('.page-sidebar');
+                if (pageSidebar) {
+                    isOpen = pageSidebar.classList.toggle('active');
+                    overlay.classList.toggle('active', isOpen);
+                }
+            } else if (headerNav) {
+                isOpen = headerNav.classList.toggle('active');
+            }
+
             toggleBtn.setAttribute('aria-expanded', String(isOpen));
-            
+
             if (isOpen) {
                 if (menuIcon) menuIcon.style.display = 'none';
                 if (closeIcon) closeIcon.style.display = 'block';
-                document.body.style.overflow = 'hidden';
+                if (this.isSubpage()) {
+                    document.body.style.overflow = 'hidden';
+                }
             } else {
                 if (menuIcon) menuIcon.style.display = 'block';
                 if (closeIcon) closeIcon.style.display = 'none';
@@ -146,11 +241,27 @@ class DocsHeader extends HTMLElement {
         toggleBtn.addEventListener('click', toggleMenu);
         overlay.addEventListener('click', toggleMenu);
 
-        // Clean up on scroll or resize if sidebar is open
+        // Close header dropdown menu when clicking outside
+        document.addEventListener('click', (e) => {
+            if (headerNav && headerNav.classList.contains('active')) {
+                if (!headerNav.contains(e.target) && !toggleBtn.contains(e.target)) {
+                    headerNav.classList.remove('active');
+                    toggleBtn.setAttribute('aria-expanded', 'false');
+                    if (menuIcon) menuIcon.style.display = 'block';
+                    if (closeIcon) closeIcon.style.display = 'none';
+                }
+            }
+        });
+
+        // Clean up on scroll or resize if sidebar or menu is open
         window.addEventListener('resize', () => {
-            if (window.innerWidth > 1024 && sidebar.classList.contains('open')) {
-                sidebar.classList.remove('open');
-                overlay.classList.remove('open');
+            if (window.innerWidth > 1024) {
+                if (sidebar) {
+                    const pageSidebar = sidebar.querySelector('.page-sidebar');
+                    if (pageSidebar) pageSidebar.classList.remove('active');
+                }
+                if (headerNav) headerNav.classList.remove('active');
+                overlay.classList.remove('active');
                 toggleBtn.setAttribute('aria-expanded', 'false');
                 if (menuIcon) menuIcon.style.display = 'block';
                 if (closeIcon) closeIcon.style.display = 'none';
@@ -271,7 +382,7 @@ class DocsHeader extends HTMLElement {
                 html += '<div class="search-status">No results found</div>';
             } else {
                 html += results.slice(0, 5).map((item, idx) => {
-                    return `
+                    return /*html*/ `
                         <a href="${basePath}${item.path}" class="search-result-item" data-index="${idx}">
                             <div class="result-title">${item.title}</div>
                             <div class="result-category">${item.category || 'Guides'}</div>
@@ -281,7 +392,7 @@ class DocsHeader extends HTMLElement {
                 }).join('');
             }
 
-            html += `
+            html += /*html*/`
                 <a href="${basePath}list.html?q=${encodeURIComponent(query)}" class="search-result-item full-search-row" data-index="${results.length}">
                     <div class="result-title">Full Search</div>
                     <div class="result-excerpt">See all results matching "${query}"</div>
@@ -354,17 +465,15 @@ class DocsSidebar extends HTMLElement {
     }
 
     render(projectName, appUrl, prefix) {
-        this.innerHTML = `
+        this.innerHTML = /*html*/ `
             <nav class="page-sidebar" aria-label="Documentation sections">
                 <div class="sidebar-logo">
-                    <a href="/" class="logo-link" style="display: flex; align-items: center; gap: 0.5rem; text-decoration: none; color: var(--accent); margin-bottom: 1.5rem;">
-                        <docs-logo style="flex-shrink: 0;"></docs-logo>
-                        <span style="font-family: var(--font-heading); font-size: 1.35rem; font-weight: 700; color: var(--text-main); letter-spacing: -0.025em;">${projectName}</span>
+                    <a href="/" class="logo-link">
+                        <docs-logo></docs-logo>
+                        <span class="sidebar-logo-text">${projectName}</span>
                     </a>
                 </div>
-                <ul class="sidebar-menu-list">
-                    <li><a href="${prefix}" class="sidebar-link">← Help Center Home</a></li>
-                </ul>
+                <ul class="sidebar-menu-list"></ul>
             </nav>
         `;
 
@@ -515,6 +624,76 @@ class DocsSidebar extends HTMLElement {
     }
 }
 
+class DocsTableOfContents extends HTMLElement {
+    connectedCallback() {
+        this.style.display = 'contents';
+
+        setTimeout(() => {
+            const overviewEl = document.getElementById('overview');
+            const headings = Array.from(document.querySelectorAll('.page-content h2, .page-content h3'));
+
+            if (headings.length === 0 && !overviewEl) {
+                this.innerHTML = '';
+                return;
+            }
+
+            const nav = document.createElement('nav');
+            nav.className = 'inline-toc';
+            nav.setAttribute('aria-label', 'Table of contents');
+
+            const titleDiv = document.createElement('div');
+            titleDiv.className = 'toc-title';
+            titleDiv.textContent = 'Table of Contents';
+            nav.appendChild(titleDiv);
+
+            const ul = document.createElement('ul');
+            ul.className = 'toc-list';
+
+            if (overviewEl) {
+                const li = document.createElement('li');
+                const a = document.createElement('a');
+                a.href = '#overview';
+                a.textContent = 'Overview';
+                li.appendChild(a);
+                ul.appendChild(li);
+            }
+
+            headings.forEach(heading => {
+                let id = heading.id;
+                if (!id) {
+                    id = heading.textContent.toLowerCase().trim()
+                        .replace(/[^\w\s-]/g, '')
+                        .replace(/[\s_]+/g, '-')
+                        .replace(/^-+|-+$/g, '');
+                    heading.id = id;
+                }
+
+                const cloned = heading.cloneNode(true);
+                const anchor = cloned.querySelector('.heading-anchor');
+                if (anchor) {
+                    anchor.remove();
+                }
+                const text = cloned.textContent.trim();
+
+                const li = document.createElement('li');
+                if (heading.tagName === 'H3') {
+                    li.className = 'toc-subitem';
+                }
+                const a = document.createElement('a');
+                a.href = `#${id}`;
+                a.textContent = text;
+                li.appendChild(a);
+                ul.appendChild(li);
+            });
+
+            nav.appendChild(ul);
+            this.innerHTML = '';
+            this.appendChild(nav);
+        }, 50);
+    }
+}
+customElements.define('docs-table-of-contents', DocsTableOfContents);
+
 class DocsAnchorHelper extends HTMLElement {
     connectedCallback() {
         this.style.display = 'contents';
@@ -562,7 +741,7 @@ class DocsAnchorHelper extends HTMLElement {
             `;
 
             const checkIconSvg = `
-                <svg class="anchor-svg-check" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="display: none; color: var(--success);">
+                <svg class="anchor-svg-check" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
                     <polyline points="20 6 9 17 4 12"></polyline>
                 </svg>
             `;
@@ -617,7 +796,7 @@ class DocsSearch extends HTMLElement {
         const placeholderText = isMobile ? 'Search guides...' : "Search guides... (press '/' to focus)";
         const kbdContent = isMobile ? '' : '/';
 
-        this.innerHTML = `
+        this.innerHTML = /*html*/ `
             <div class="docs-search-wrapper">
             <div class="search-input-container">
                 <svg class="search-icon" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
@@ -627,7 +806,7 @@ class DocsSearch extends HTMLElement {
                 <input type="search" class="search-input" placeholder="${placeholderText}" aria-label="Search guides" autocomplete="off" />
                 <kbd class="search-kbd">${kbdContent}</kbd>
             </div>
-            <div class="search-dropdown" style="display: none;"></div>
+            <div class="search-dropdown"></div>
             </div>
         `;
 
@@ -755,7 +934,7 @@ class DocsSearch extends HTMLElement {
                 }).join('');
             }
 
-            html += `
+            html += /*html*/ `
                 <a href="${basePath}list.html?q=${encodeURIComponent(query)}" class="search-result-item full-search-row" data-index="${results.length}">
                     <div class="result-title">Full Search</div>
                     <div class="result-excerpt">See all results matching "${query}"</div>
@@ -825,6 +1004,19 @@ class DocsGrid extends HTMLElement {
                 });
             }
 
+            const titleEl = this.previousElementSibling;
+            if (!items || items.length === 0) {
+                this.innerHTML = '';
+                if (titleEl && titleEl.classList.contains('docs-categories-title')) {
+                    titleEl.style.display = 'none';
+                }
+                return;
+            }
+
+            if (titleEl && titleEl.classList.contains('docs-categories-title')) {
+                titleEl.style.display = '';
+            }
+
             this.innerHTML = `
                 <div class="docs-grid">
                     ${items.map(item => `
@@ -851,31 +1043,135 @@ class DocsGrid extends HTMLElement {
 }
 
 class DocsFooter extends HTMLElement {
+    isSubpage() {
+        const path = window.location.pathname;
+        return /\/docs\/[^\/]+\//.test(path) || (!path.endsWith('/docs/') && path.split('/docs/')[1]?.length > 0 && path.split('/docs/')[1].includes('/'));
+    }
+
     connectedCallback() {
-        const basePath = /\/docs\/[^\/]+\//.test(window.location.pathname) ? '../' : '';
+        const basePath = this.isSubpage() ? '../' : '';
         fetch(`${basePath}docs-config.json`)
             .then(r => r.ok ? r.json() : null)
             .then(config => {
-                const projectName = config ? config.projectName : 'Help Center';
-                const currentYear = new Date().getFullYear();
-                this.innerHTML = `
-                    <footer class="app-footer" style="padding: 2rem 1.5rem; text-align: center; border-top: 1px solid var(--panel-border); margin-top: 4rem;">
-                        <p style="font-size: 0.875rem; color: var(--text-muted);">
-                            &copy; ${currentYear} ${projectName}. All rights reserved. Powered by Standalone Help Center.
-                        </p>
-                    </footer>
-                `;
+                this.render(config || {});
             })
             .catch(() => {
-                const currentYear = new Date().getFullYear();
-                this.innerHTML = `
-                    <footer class="app-footer" style="padding: 2rem 1.5rem; text-align: center; border-top: 1px solid var(--panel-border); margin-top: 4rem;">
-                        <p style="font-size: 0.875rem; color: var(--text-muted);">
-                            &copy; ${currentYear} Help Center. All rights reserved.
-                        </p>
-                    </footer>
-                `;
+                this.render({});
             });
+    }
+
+    render(config) {
+        const basePath = this.isSubpage() ? '../' : '';
+        const projectName = config.projectName || 'Help Center';
+        const currentYear = new Date().getFullYear();
+
+        let footerLinks = [];
+        const linksAttr = this.getAttribute('links');
+        if (linksAttr) {
+            try {
+                footerLinks = JSON.parse(linksAttr);
+            } catch (e) {
+                console.error('Failed to parse links attribute on docs-footer:', e);
+            }
+        } else if (config.footerLinks) {
+            footerLinks = config.footerLinks;
+        }
+
+        const linksHtml = footerLinks.map(link => {
+            let href = link.href;
+            if (this.isSubpage() && (href.startsWith('./') || href.startsWith('../'))) {
+                href = basePath + href;
+            }
+            return `<a href="${href}" class="footer-link" ${link.id ? `id="footer-link-${link.id}"` : ''}>${link.title}</a>`;
+        }).join('');
+
+        this.innerHTML = /*html*/ `
+            <footer class="app-footer">
+                <div class="footer-content">
+                    <p class="footer-copyright">
+                        &copy; ${currentYear} ${projectName}
+                    </p>
+                    ${footerLinks.length > 0 ? `
+                    <div class="footer-nav-links">
+                        ${linksHtml}
+                    </div>
+                    ` : ''}
+                    <div class="footer-theme-selector">
+                        <button id="theme-toggle" class="theme-toggle" aria-label="Toggle theme">
+                            <svg class="sun-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
+                                stroke-linecap="round" stroke-linejoin="round">
+                                <circle cx="12" cy="12" r="5"></circle>
+                                <line x1="12" y1="1" x2="12" y2="3"></line>
+                                <line x1="12" y1="21" x2="12" y2="23"></line>
+                                <line x1="4.22" y1="4.22" x2="5.64" y2="5.64"></line>
+                                <line x1="18.36" y1="18.36" x2="19.78" y2="19.78"></line>
+                                <line x1="1" y1="12" x2="3" y2="12"></line>
+                                <line x1="21" y1="12" x2="23" y2="12"></line>
+                                <line x1="4.22" y1="19.78" x2="5.64" y2="18.36"></line>
+                                <line x1="18.36" y1="5.64" x2="19.78" y2="4.22"></line>
+                            </svg>
+                            <svg class="moon-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
+                                stroke-linecap="round" stroke-linejoin="round">
+                                <path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"></path>
+                            </svg>
+                            <svg class="system-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
+                                stroke-linecap="round" stroke-linejoin="round">
+                                <rect x="2" y="3" width="20" height="14" rx="2" ry="2"></rect>
+                                <line x1="8" y1="21" x2="16" y2="21"></line>
+                                <line x1="12" y1="17" x2="12" y2="21"></line>
+                            </svg>
+                            <span id="theme-status" class="theme-status"></span>
+                        </button>
+                    </div>
+                </div>
+            </footer>
+        `;
+
+        this.initTheme();
+    }
+
+    initTheme() {
+        const themeToggle = this.querySelector('#theme-toggle');
+        const themeStatus = this.querySelector('#theme-status');
+        let themeStatusTimeout;
+
+        function showThemeStatus(text) {
+            if (!themeStatus) return;
+            themeStatus.textContent = text;
+            themeStatus.classList.add('visible');
+            clearTimeout(themeStatusTimeout);
+            themeStatusTimeout = setTimeout(() => { themeStatus.classList.remove('visible'); }, 2000);
+        }
+
+        function setTheme(theme) {
+            if (theme === 'system') {
+                const isDark = window.matchMedia('(prefers-color-scheme: dark)').matches;
+                document.documentElement.setAttribute('data-theme', isDark ? 'dark' : 'light');
+                document.documentElement.setAttribute('data-theme-mode', 'system');
+            } else {
+                document.documentElement.setAttribute('data-theme', theme);
+                document.documentElement.removeAttribute('data-theme-mode');
+            }
+            localStorage.setItem('theme', theme);
+        }
+
+        if (themeToggle) {
+            themeToggle.addEventListener('click', () => {
+                const currentTheme = localStorage.getItem('theme') || 'light';
+                let newTheme = currentTheme === 'dark' ? 'light' : currentTheme === 'light' ? 'system' : 'dark';
+                let statusText = newTheme === 'light' ? 'Light Theme' : newTheme === 'system' ? 'System Theme' : 'Dark Theme';
+
+                setTheme(newTheme);
+                showThemeStatus(statusText);
+            });
+        }
+
+        // System theme change listener
+        window.matchMedia('(prefers-color-scheme: dark)').addEventListener('change', (e) => {
+            if (localStorage.getItem('theme') === 'system') {
+                document.documentElement.setAttribute('data-theme', e.matches ? 'dark' : 'light');
+            }
+        });
     }
 }
 

@@ -1,5 +1,31 @@
 {
   "projectName": "Help Center",
   "componentPrefix": "docs",
-  "baseUrl": "http://localhost"
+  "baseUrl": "http://localhost",
+  "faviconDir": "./assets/favicon",
+  "googleFontsUrl": true,
+  "navLinks": [
+    {
+      "title": "App",
+      "href": "../",
+      "id": "app"
+    },
+    {
+      "title": "Guides",
+      "href": "./",
+      "id": "guides"
+    }
+  ],
+  "footerLinks": [
+    {
+      "title": "Terms",
+      "href": "../terms",
+      "id": "terms"
+    },
+    {
+      "title": "Privacy",
+      "href": "../privacy",
+      "id": "privacy"
+    }
+  ]
 }

@@ -9,10 +9,23 @@ if (!fs.existsSync(configPath)) {
 }
 
 const config = require(configPath);
+const defaultFontsUrl = 'https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=Outfit:wght@400;500;600;700;800&family=JetBrains+Mono:wght@400;500;600&display=swap';
+const fontsConfig = config.googleFontsUrl !== undefined ? config.googleFontsUrl : true;
+let fontsHtml = '';
+if (fontsConfig) {
+    const url = typeof fontsConfig === 'string' ? fontsConfig : defaultFontsUrl;
+    fontsHtml = `<!-- Preconnect Fonts -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="${url}" rel="stylesheet">`;
+}
+
 const placeholders = {
     '{{PROJECT_NAME}}': config.projectName || 'App',
     '{{PREFIX}}': config.componentPrefix || 'app',
-    '{{BASE_URL}}': (config.baseUrl || 'http://localhost').replace(/\/$/, '')
+    '{{BASE_URL}}': (config.baseUrl || 'http://localhost').replace(/\/$/, ''),
+    '{{FAVICON_DIR}}': config.faviconDir || './assets/favicon',
+    '{{FONTS_LOAD_LINK}}': fontsHtml
 };
 
 const TEMPLATE_DIR = path.join(__dirname, 'templates');
