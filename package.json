@@ -1,0 +1,9 @@
+{
+  "name": "static-helpdocs",
+  "version": "1.0.0",
+  "scripts": {
+    "init": "node scripts/init-docs.js",
+    "new": "node scripts/add-new-doc.js",
+    "build": "node scripts/generate-docs-index.js"
+  }
+}
