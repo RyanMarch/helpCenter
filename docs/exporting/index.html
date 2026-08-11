@@ -1,0 +1,122 @@
+<!DOCTYPE html>
+<html lang="en" translate="no">
+
+<head>
+    <meta charset="UTF-8">
+    <link class="favicon-link" rel="icon" type="image/png" href="../assets/favicon/favicon-96x96.png?v=2" sizes="96x96" />
+    <link class="favicon-link" rel="icon" type="image/svg+xml" href="../assets/favicon/favicon.svg?v=2" />
+    <link class="favicon-link" rel="shortcut icon" href="../assets/favicon/favicon.ico?v=2" />
+    <link class="favicon-link" rel="apple-touch-icon" sizes="180x180" href="../assets/favicon/apple-touch-icon.png?v=2" />
+    <meta name="apple-mobile-web-app-title" content="Help Center" />
+    <link class="favicon-link" rel="manifest" href="../assets/favicon/site.webmanifest?v=2" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+    <meta name="google" content="notranslate">
+    <script>
+        // Theme initialization to prevent flicker
+        (function () {
+            const savedTheme = localStorage.getItem('theme') || 'light';
+            if (savedTheme === 'system') {
+                const isDark = window.matchMedia('(prefers-color-scheme: dark)').matches;
+                document.documentElement.setAttribute('data-theme', isDark ? 'dark' : 'light');
+                document.documentElement.setAttribute('data-theme-mode', 'system');
+            } else {
+                document.documentElement.setAttribute('data-theme', savedTheme);
+                document.documentElement.removeAttribute('data-theme-mode');
+            }
+        })();
+    </script>
+
+    <!-- Preconnect Fonts -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=Outfit:wght@400;500;600;700;800&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+
+    <title>Exporting Designs — Help Center Docs</title>
+    <meta name="description" content="Export your designed icons as PNGs, SVGs, or copy code for direct integration.">
+    <meta name="category" content="Guides">
+    <meta name="doc-id" content="exporting">
+    <link rel="canonical" href="http://localhost/docs/exporting/">
+
+    <!-- Docs Style Sheet -->
+    <link rel="stylesheet" href="../style.css">
+    <script src="../docs-components.js" type="module"></script>
+</head>
+
+<body class="user-docs-page">
+    <div class="app-container">
+        <!-- Mobile Navigation Overlay -->
+        <div id="mobile-overlay" class="mobile-overlay"></div>
+
+        <main class="page-container-sidebar user-docs">
+            <!-- Sidebar Navigation -->
+            <docs-sidebar></docs-sidebar>
+
+            <!-- Right-side Content & Header Wrapper -->
+            <div class="page-content-wrapper">
+                <docs-header></docs-header>
+
+                <!-- Content Area -->
+                <docs-anchor-helper>
+                    <section class="page-content" aria-label="Exporting Designs Content">
+
+                    <!-- Overview -->
+                    <article id="overview" class="doc-section">
+                        <h1>Exporting Designs</h1>
+                        <p class="lead">
+                            Once your icon is ready, you can export it in multiple formats depending on your needs.
+                        </p>
+                        <p>
+                            Icon Studio supports exporting high-resolution PNGs, scalable vector SVGs, and copying direct integration code formats (CSS/HTML).
+                        </p>
+                    </article>
+
+                    <!-- Table of Contents -->
+                    <docs-table-of-contents></docs-table-of-contents>
+
+                    <hr class="section-divider">
+
+                    <!-- PNG Export -->
+                    <article id="png-export" class="doc-section">
+                        <h2>PNG Export</h2>
+                        <p>
+                            PNG is best for standard web and app assets where you need a fixed pixel dimension:
+                        </p>
+                        <ul>
+                            <li>Click the <strong>Export PNG</strong> button in the primary actions section.</li>
+                            <li>The PNG is rendered at high resolution to ensure crisp assets even on high-DPI (Retina) screens.</li>
+                            <li>Transparency is preserved outside the custom icon container boundary.</li>
+                        </ul>
+                    </article>
+
+                    <hr class="section-divider">
+
+                    <!-- SVG Export -->
+                    <article id="svg-export" class="doc-section">
+                        <h2>SVG Export</h2>
+                        <p>
+                            SVG is recommended for scalable interfaces, responsive websites, and source vector graphics:
+                        </p>
+                        <ul>
+                            <li>Click the dropdown menu next to the export options and choose <strong>Export SVG</strong>.</li>
+                            <li>The resulting file will contain scalable vector code, maintaining sharp resolution at any viewport size.</li>
+                        </ul>
+                    </article>
+
+                    </section>
+                </docs-anchor-helper>
+            </div>
+        </main>
+
+        <!-- Footer -->
+        <docs-footer></docs-footer>
+
+        <!-- Lightbox Modal -->
+        <div id="lightbox-modal" class="lightbox-modal" aria-hidden="true" role="dialog" aria-label="Image Viewer">
+            <button class="lightbox-close" aria-label="Close image viewer">&times;</button>
+            <img class="lightbox-content" id="lightbox-img" alt="">
+            <div class="lightbox-caption" id="lightbox-caption"></div>
+        </div>
+    </div>
+</body>
+
+</html>
