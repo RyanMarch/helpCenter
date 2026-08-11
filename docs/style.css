@@ -211,6 +211,39 @@ a:hover {
     padding-top: 0;
 }
 
+/* Screenshots embedded in article content, e.g. <figure class="doc-screenshot-figure"><img>...<figcaption>. Click to open in the lightbox modal (wired in docs-components.js). */
+.doc-screenshot-figure {
+    margin: 1.5rem 0;
+}
+
+.doc-screenshot-figure img {
+    display: block;
+    width: 100%;
+    max-width: 100%;
+    height: auto;
+    border: 1px solid var(--panel-border);
+    border-radius: var(--radius-md);
+    box-shadow: var(--shadow-md);
+    cursor: zoom-in;
+    transition: opacity 0.15s ease;
+}
+
+.doc-screenshot-figure img:hover {
+    opacity: 0.92;
+}
+
+.doc-screenshot-figure img:focus-visible {
+    outline: 2px solid var(--accent);
+    outline-offset: 2px;
+}
+
+.doc-screenshot-figure figcaption {
+    margin-top: 0.5rem;
+    font-size: 0.85rem;
+    color: var(--text-muted);
+    text-align: center;
+}
+
 /* Tighten container elements specifically for Docs */
 .user-docs-page .app-container {
     max-width: 1400px;
@@ -288,6 +321,19 @@ a:hover {
     align-items: center;
     justify-content: center;
     margin-bottom: 0.75rem;
+}
+
+.cta-card-icon docs-logo {
+    display: block;
+    width: 20px;
+    height: 20px;
+}
+
+.cta-card-icon img,
+.cta-card-icon svg {
+    width: 20px;
+    height: 20px;
+    object-fit: contain;
 }
 
 .cta-card-title {
