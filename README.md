@@ -27,6 +27,17 @@ Open the newly copied `docs/docs-config.json` inside the target project and upda
 ```
 * **`projectName`:** The display name of your site (e.g., used in header/footer text and document titles).
 * **`faviconDir`:** The relative or absolute path to your favicon assets directory. If using local favicons inside the `docs/` folder, use `./assets/favicon`. If sharing favicons with your host application, use the path to the host application's asset directory (e.g., `../assets/favicon`).
+* **`sidebarCta`** *(optional)*: promo card pinned to the bottom of every article's sidebar. Omit the key entirely to leave the sidebar without one.
+  ```json
+  "sidebarCta": {
+    "title": "Your App",
+    "description": "One line pitching the app itself.",
+    "buttonText": "Go to Your App",
+    "buttonUrl": "/app"
+  }
+  ```
+
+> **Favicon paths are one level deeper on article pages.** `faviconDir` is resolved relative to `docs/` for `index.html`/`list.html`, but article pages live one level below that at `docs/<slug>/`, so `scripts/add-new-doc.js` automatically prepends an extra `../` for those. If you ever hand-write or script your own article pages instead of going through `npm run docs:new`, remember that extra level, it fails silently (a 404'd favicon, not a visible error).
 
 ### Step 3: Register Commands in package.json
 Open your target project's `package.json` and append the following scripts:
@@ -63,3 +74,18 @@ npm run docs:build
   npm run docs:build
   ```
   Run this command whenever you add, update, or remove help articles to keep the client-side fuzzy search accurate.
+
+---
+
+## Embedding Screenshots
+
+Drop a `<figure class="doc-screenshot-figure">` anywhere inside an `<article class="doc-section">` and it's automatically clickable, opening in a full-screen lightbox (the modal markup is already in the page template, `docs-components.js` wires it up on load):
+
+```html
+<figure class="doc-screenshot-figure">
+    <img src="../../assets/screenshots/example.png" alt="Description for screen readers" loading="lazy">
+    <figcaption>Caption shown under the image, and in the lightbox.</figcaption>
+</figure>
+```
+
+`figcaption` is optional. Keyboard users can tab to the image and press Enter/Space to open it; Escape, clicking the backdrop, or the close button all dismiss it.

@@ -457,14 +457,35 @@ class DocsSidebar extends HTMLElement {
             .then(r => r.ok ? r.json() : null)
             .then(config => {
                 const projectName = config ? config.projectName : 'Help Center';
-                this.render(projectName, appUrl, prefix);
+                this.render(projectName, appUrl, prefix, config?.sidebarCta);
             })
             .catch(() => {
-                this.render('Help Center', appUrl, prefix);
+                this.render('Help Center', appUrl, prefix, null);
             });
     }
 
-    render(projectName, appUrl, prefix) {
+    render(projectName, appUrl, prefix, sidebarCta) {
+        // Optional promo card pinned to the bottom of the sidebar, e.g.
+        // "sidebarCta": { "title": "...", "description": "...", "buttonText": "...", "buttonUrl": "/app" }
+        // in docs-config.json. Omit sidebarCta entirely to leave the sidebar without one.
+        const ctaHtml = sidebarCta ? /*html*/ `
+                <div class="sidebar-footer">
+                    <div class="cta-card">
+                        <div class="cta-card-icon">
+                            <docs-logo></docs-logo>
+                        </div>
+                        <h4 class="cta-card-title">${sidebarCta.title || projectName}</h4>
+                        <p class="cta-card-desc">${sidebarCta.description || ''}</p>
+                        <a href="${sidebarCta.buttonUrl || appUrl}" class="btn-cta-generator">
+                            <span>${sidebarCta.buttonText || `Go to ${projectName}`}</span>
+                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" width="14" height="14">
+                                <line x1="5" y1="12" x2="19" y2="12"></line>
+                                <polyline points="12 5 19 12 12 19"></polyline>
+                            </svg>
+                        </a>
+                    </div>
+                </div>` : '';
+
         this.innerHTML = /*html*/ `
             <nav class="page-sidebar" aria-label="Documentation sections">
                 <div class="sidebar-logo">
@@ -474,6 +495,7 @@ class DocsSidebar extends HTMLElement {
                     </a>
                 </div>
                 <ul class="sidebar-menu-list"></ul>
+                ${ctaHtml}
             </nav>
         `;
 
@@ -774,6 +796,63 @@ class DocsAnchorHelper extends HTMLElement {
                 });
             });
         });
+
+        this.wireLightbox();
+    }
+
+    // Opens screenshots embedded via <figure class="doc-screenshot-figure"><img>...</figure>
+    // in the shared #lightbox-modal (markup lives once per page, outside this component).
+    wireLightbox() {
+        const images = this.querySelectorAll('.doc-screenshot-figure img');
+        if (images.length === 0) return;
+
+        const modal = document.getElementById('lightbox-modal');
+        const modalImg = document.getElementById('lightbox-img');
+        const modalCaption = document.getElementById('lightbox-caption');
+        if (!modal || !modalImg) return;
+
+        const openLightbox = (img) => {
+            modalImg.src = img.currentSrc || img.src;
+            modalImg.alt = img.alt || '';
+            const caption = img.closest('figure')?.querySelector('figcaption');
+            if (modalCaption) modalCaption.textContent = caption ? caption.textContent : '';
+            modal.classList.add('active');
+            modal.setAttribute('aria-hidden', 'false');
+            document.body.style.overflow = 'hidden';
+        };
+
+        const closeLightbox = () => {
+            modal.classList.remove('active');
+            modal.setAttribute('aria-hidden', 'true');
+            document.body.style.overflow = '';
+        };
+
+        images.forEach(img => {
+            img.setAttribute('tabindex', '0');
+            img.setAttribute('role', 'button');
+            img.setAttribute('aria-label', 'Click to enlarge image');
+            img.addEventListener('click', () => openLightbox(img));
+            img.addEventListener('keydown', (e) => {
+                if (e.key === 'Enter' || e.key === ' ') {
+                    e.preventDefault();
+                    openLightbox(img);
+                }
+            });
+        });
+
+        // The modal itself is shared across every doc-anchor-helper instance on the
+        // page (there's only ever one #lightbox-modal), so only bind its own
+        // controls once even if this runs more than once.
+        if (!modal.dataset.lightboxWired) {
+            modal.dataset.lightboxWired = 'true';
+            modal.querySelector('.lightbox-close')?.addEventListener('click', closeLightbox);
+            modal.addEventListener('click', (e) => {
+                if (e.target === modal) closeLightbox();
+            });
+            document.addEventListener('keydown', (e) => {
+                if (e.key === 'Escape' && modal.classList.contains('active')) closeLightbox();
+            });
+        }
     }
 }
 
